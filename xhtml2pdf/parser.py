@@ -415,7 +415,13 @@ def pisaPreLoop(node, context, collect=False):
     return data
 
 
+bulletText = None
+bulletTextUsed = None
+
 def pisaLoop(node, context, path=None, **kw):
+    global bulletText, bulletTextUsed
+    if node.nodeName == 'li':
+        bulletTextUsed = False
 
     if path is None:
         path = []
@@ -435,14 +441,17 @@ def pisaLoop(node, context, path=None, **kw):
 
     # TEXT
     if node.nodeType == Node.TEXT_NODE:
+        if node.data.strip() and 'li' in path and not bulletTextUsed:
+            context.fragBlock.bulletText = bulletText
+            bulletTextUsed = True
+
         # print indent, "#", repr(node.data) #, context.frag
         context.addFrag(node.data)
-        
+
         # context.text.append(node.value)
 
     # ELEMENT
     elif node.nodeType == Node.ELEMENT_NODE:
-    
         node.tagName = node.tagName.replace(":", "").lower()
 
         if node.tagName in ("style", "script"):
@@ -544,7 +553,8 @@ def pisaLoop(node, context, path=None, **kw):
             context.keepInFrameIndex = len(context.story)
 
         # BEGIN tag
-        klass = globals().get("pisaTag%s" % node.tagName.replace(":", "").upper(), None)
+        tagName = node.tagName.replace(":", "")
+        klass = globals().get("pisaTag%s" % tagName.upper(), None)
         obj = None
 
         # Static block
@@ -558,6 +568,9 @@ def pisaLoop(node, context, path=None, **kw):
         if klass is not None:
             obj = klass(node, attr)
             obj.start(context)
+
+        if tagName.lower() == 'li':
+            bulletText = copy.copy(context.frag.bulletText)
 
         # Visit child nodes
         context.fragBlock = fragBlock = copy.copy(context.frag)
