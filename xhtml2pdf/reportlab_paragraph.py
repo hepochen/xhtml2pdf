@@ -838,6 +838,7 @@ def cjkFragSplit(frags, maxWidths, calcBounds, encoding='utf8'):
     """
     This attempts to be wordSplit for frags using the dumb algorithm
     """
+    global  ALL_CANNOT_START
 
     from reportlab.rl_config import _FUZZ
 
@@ -847,7 +848,16 @@ def cjkFragSplit(frags, maxWidths, calcBounds, encoding='utf8'):
         if not isinstance(text, unicode):
             text = text.decode(encoding)
         if text:
-            U.extend([cjkU(t, f, encoding) for t in text])
+            for word in text.split(' '):
+                if not word:
+                    continue
+                if re.match(r'^[-!,.:\w]+$', word):
+                    U.append(cjkU(word, f, encoding))
+                else:
+                    for letter in word:
+                        U.append(cjkU(letter, f, encoding))
+                U.append(cjkU(' ', f, encoding))
+            #U.extend([cjkU(t, f, encoding) for t in text])
         else:
             U.append(cjkU(text, f, encoding))
 
@@ -860,19 +870,24 @@ def cjkFragSplit(frags, maxWidths, calcBounds, encoding='utf8'):
         w = u.width
         widthUsed += w
         if widthUsed < maxWidth:
-            widthUsed += u.frag.rightIndent
+            letter_spacing = getSize(u.frag.letterSpacing)
+            widthUsed += u.frag.rightIndent + (len(u)-1)*letter_spacing
+
         lineBreak = hasattr(u.frag, 'lineBreak')
         endLine = (widthUsed > maxWidth + w/2.0 + _FUZZ and widthUsed > 0) or lineBreak
         if endLine:
             bound_indexes.append(i)
 
             if lineBreak:
+                ALL_CANNOT_START = ALL_CANNOT_START.rstrip(" ")
                 if i-1 not in bound_indexes:
                     lines.append(makeCJKParaLine(U[lineStartPos:i], 0, calcBounds))
                 lineStartPos = i
                 widthUsed = w
                 i -= 1
                 continue
+            else:
+                ALL_CANNOT_START += " "
 
             extraSpace = maxWidth - widthUsed + w
             #This is the most important of the Japanese typography rules.
