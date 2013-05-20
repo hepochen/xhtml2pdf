@@ -269,7 +269,7 @@ def _putFragLine(cur_x, tx, line):
                 elif kind == 'img':
                     tx._textOut('', 1)
         else:
-            cur_x_s = cur_x + nSpaces * ws
+            cur_x_s = cur_x + nSpaces * ws + letter_spacing
             if (tx._fontname, tx._fontsize) != (f.fontName, f.fontSize):
                 tx._setFont(f.fontName, f.fontSize)
             if xs.textColor != f.textColor:
@@ -829,6 +829,7 @@ def makeCJKParaLine(U, extraSpace, calcBounds):
         f0 = f0.clone()
         f0.text = u''.join(CW)
         words.append(f0)
+
     return FragLine(kind=1, extraSpace=extraSpace, wordCount=1, words=words[1:], fontSize=maxSize, ascent=maxAscent,
                     descent=minDescent)
 
@@ -854,16 +855,20 @@ def cjkFragSplit(frags, maxWidths, calcBounds, encoding='utf8'):
     widthUsed = lineStartPos = 0
     maxWidth = maxWidths[0]
 
+    bound_indexes = []
     for i, u in enumerate(U):
         w = u.width
         widthUsed += w
         if widthUsed < maxWidth:
             widthUsed += u.frag.rightIndent
         lineBreak = hasattr(u.frag, 'lineBreak')
-        endLine = (widthUsed > maxWidth + _FUZZ and widthUsed > 0) or lineBreak
+        endLine = (widthUsed > maxWidth + w/2.0 + _FUZZ and widthUsed > 0) or lineBreak
         if endLine:
+            bound_indexes.append(i)
+
             if lineBreak:
-                lines.append(makeCJKParaLine(U[lineStartPos:i], 0, calcBounds))
+                if i-1 not in bound_indexes:
+                    lines.append(makeCJKParaLine(U[lineStartPos:i], 0, calcBounds))
                 lineStartPos = i
                 widthUsed = w
                 i -= 1
